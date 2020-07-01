@@ -22,7 +22,7 @@ Firstly, enter the root directory of the project, and then generate a folder to 
 cd [root directory of the project]
 mkdir model
 ```
-type the following code to run on CIFAR-10
+Type the following code to run on CIFAR-10
 ```
 pyhton3 main.py -architecture [Vgg or ResNet] -decay [initial value of decay factor] -pr [global pruning rate of channels]
 ```
