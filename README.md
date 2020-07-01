@@ -7,12 +7,12 @@ The code is based on the deep-learning framework [Pytorch](https://pytorch.org/)
 * pytorch >= 1.3.0
 ### Data set
 For CIFAR-10 data set, you may directly download it using the pytorch API
-'''python
+```python
 # for training set
 dataset(root='../data', train=True, download=True, transform=transform_train)
 # for testing set
 dataset(root='../data', train=False, download=True, transform=transform_train)
-'''
+```
 
 ## Run the code
 
