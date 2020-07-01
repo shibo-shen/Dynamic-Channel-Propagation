@@ -14,12 +14,20 @@ dataset(root='../data', train=True, download=True)
 # for testing set
 dataset(root='../data', train=False, download=True)
 ```
-As for ILSVRC2012(ImageNet), you have to download it from the [URL](http://image-net.org/challenges/LSVRC/2012/index), unzip it and move the validating images to subfolders by the [shell](https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh).
+As for ILSVRC-2012(ImageNet), you have to download it from the [URL](http://image-net.org/challenges/LSVRC/2012/index), unzip it and move the validating images to subfolders by the [shell](https://raw.githubusercontent.com/soumith/imagenetloader.torch/master/valprep.sh).
 
 ## Run the code
-Firstly, enter the root directory of the project, and then generate a folder to store the results.
+Firstly, enter the root directory of the project, and then generate a folder to store the results
 ```
+cd [root directory of the project]
 mkdir model
 ```
-
+type the following code to run on CIFAR-10
+```
+pyhton3 main.py -architecture [Vgg or ResNet] -decay [initial value of decay factor] -pr [global pruning rate of channels]
+```
+In regard with pruning ResNet on ILSVRC-2012, type
+```
+pyhton3 main2.py -pr [global pruning rate of channels]
+```
 
