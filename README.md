@@ -9,6 +9,7 @@ The code is based on the deep-learning framework [Pytorch](https://pytorch.org/)
 ### Data set
 For CIFAR-10, you may directly download it using pytorch API
 ```python
+from torchvision.datasets.cifar import CIFAR10 as dataset
 # for training set
 dataset(root='../data', train=True, download=True)
 # for testing set
