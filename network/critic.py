@@ -75,7 +75,7 @@ def validate_imagenet(val_loader, model, use_cuda=True):
             target = target.cuda()
             input = input.cuda()
         # compute output
-        output = model(input, i)
+        output = model(input)
 
         # measure accuracy
         prec1, prec5 = accuracy_imagenet(output.data, target, topk=(1, 5))

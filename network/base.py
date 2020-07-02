@@ -98,7 +98,6 @@ class DCPBasicClass(nn.Module):
         '''
         assert isinstance(self.channel_utility, torch.Tensor) is True
         blocks = len(self.mask)
-        print(blocks)
         threshold = torch.sort(self.channel_utility, descending=False)[0][round(self.channel_utility.size(0) * self.pruned_rate)]
         for block in range(blocks):
             start = self.channels[block]

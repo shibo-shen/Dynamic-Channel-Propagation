@@ -51,7 +51,7 @@ def train(args=None):
     # optimizer
     # warm-up
     optimizer = torch.optim.SGD(net.parameters(), lr=0.01, momentum=0.9, weight_decay=args.wd)
-    lr_scheduler = MultiStepLR(optimizer, milestones=[args.epoch // 3, args.epoch*2//3], gamma=0.1)
+    lr_scheduler = MultiStepLR(optimizer, milestones=[36, 48, 54], gamma=0.1)
     # data-load 
     transform_train = transforms.Compose([
         transforms.RandomResizedCrop(224),
@@ -86,11 +86,10 @@ def train(args=None):
     dic = {}
     net.stigmergy = False
     end = time.time()
-    # t1, t5 = validate(validate_loader, net, use_cuda)
+    # t1, t5 = validate_imagenet(validate_loader, net, use_cuda)
     net.train()
     net.update_mask(exploration=True)
     for epoch in range(args.start_epoch, epochs):
-        lr_scheduler.step()
         tacc_t1.reset()
         tacc_t5.reset()
         for i, (b_x, b_y) in enumerate(train_loader):
@@ -100,7 +99,7 @@ def train(args=None):
                 b_y = b_y.cuda()
             # update masks
             net.update_mask(not net.initialization_over)
-            outputs = net(b_x, i)
+            outputs = net(b_x)
             optimizer.zero_grad()
             loss = criterion(outputs, b_y)
             loss.backward()
@@ -118,6 +117,7 @@ def train(args=None):
                       'Prec@5 {top5.val:.3f}({top5.avg:.3f})'.format(
                     epoch+1, i+1, len(train_loader), batch_time=batch_time,
                     top1=tacc_t1, top5=tacc_t5))
+        lr_scheduler.step()
         t1, t5 = validate_imagenet(validate_loader, net, use_cuda)
         if t1 > best_t1 or t5 > best_t5:
             best_t1 = t1
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     parser.add_argument('-pr', type=float, help='pruning rate', default=0.3)
     parser.add_argument('--decay', type=float, default=0.6, help='Initialized decay factor in the evaporation process')
     parser.add_argument('--lr', type=float, help='initial learning rate', default=0.1)
-    parser.add_argument('--epochs', type=int, help="training epochs", default=90)
+    parser.add_argument('--epochs', type=int, help="training epochs", default=60)
     parser.add_argument('--bz', type=int, help='batch size', default=64)
     parser.add_argument('--wd', type=float, help='weight decay', default=1e-4)
     parser.add_argument('--cuda', type=bool, help='GPU', default=True)
@@ -155,7 +155,7 @@ if __name__ == "__main__":
     parser.add_argument('-j', '--workers', default=16, type=int, metavar='N',
                         help='number of data loading workers (default: 16)')
     parser.add_argument('--name', type=str, default="ResNet50-0.3-ImageNet")
-    parser.add_argument('-date_dir', type=str, default='../data/ILSVRC-12')
+    parser.add_argument('-data_dir', type=str, default='../data/ILSVRC-12')
     args = parser.parse_args()
     args.name = "ResNet50-{}-ImageNet".format(args.pr)
     train(args)

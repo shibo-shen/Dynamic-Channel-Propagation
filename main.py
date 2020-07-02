@@ -157,9 +157,9 @@ if __name__ == "__main__":
     parser.add_argument('--pre_model', type=str, default='record-ResNet32-base-3.p')
     parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',
                         help='number of data loading workers (default: 8)')
-    parser.add_argument('--name', type=str, default='{}'.format(net))
+    parser.add_argument('--name', type=str, default='ResNet-pr-0.5')
     parser.add_argument('-architecture', type=str, default=architecture)
-    parser.add_argument('-date_dir', type=str, default='../data')
+    parser.add_argument('-data_dir', type=str, default='../data')
     args = parser.parse_args()
     net = "{0}-pr-{1}".format(args.architecture, args.pr)
     args.name = '{}'.format(net)
