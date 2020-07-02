@@ -50,8 +50,9 @@ def train(args=None):
     criterion = nn.CrossEntropyLoss()
     # optimizer
     # warm-up
+    lr_range = [36, 48, 54]
     optimizer = torch.optim.SGD(net.parameters(), lr=0.01, momentum=0.9, weight_decay=args.wd)
-    lr_scheduler = MultiStepLR(optimizer, milestones=[36, 48, 54], gamma=0.1)
+    lr_scheduler = MultiStepLR(optimizer, milestones=lr_range, gamma=0.1)
     # data-load 
     transform_train = transforms.Compose([
         transforms.RandomResizedCrop(224),
@@ -77,7 +78,6 @@ def train(args=None):
     validate_loader = DataLoader(val_set, batch_size=16, shuffle=False, num_workers=args.workers)
 
     # training begins
-    loss_save = []
     tacc_t1 = AverageMeter()
     tacc_t5 = AverageMeter()
     batch_time = AverageMeter()
@@ -118,6 +118,7 @@ def train(args=None):
                     epoch+1, i+1, len(train_loader), batch_time=batch_time,
                     top1=tacc_t1, top5=tacc_t5))
         lr_scheduler.step()
+        net.epoch_step(lr_range)
         t1, t5 = validate_imagenet(validate_loader, net, use_cuda)
         if t1 > best_t1 or t5 > best_t5:
             best_t1 = t1
