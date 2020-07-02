@@ -6,6 +6,7 @@ from collections import OrderedDict
 import math
 import copy
 from .base import *
+import copy
 cfg = {
     'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
     'B': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
@@ -13,6 +14,7 @@ cfg = {
     'E': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
     }
 
+blocks_per_stage = 5
 
 class BasicBlock(nn.Module):
     expansion = 1
@@ -48,9 +50,9 @@ class DcpResNet(DCPBasicClass):
         self.bn1 = nn.BatchNorm2d(16)
         self.relu = nn.ReLU(inplace=True)
         self.channels.append(0)
-        self.layer1 = self._make_layer(BasicBlock, 16, 5, skip=False)
-        self.layer2 = self._make_layer(BasicBlock, 32, 5, stride=2, skip=False)
-        self.layer3 = self._make_layer(BasicBlock, 64, 5, stride=2, skip=False)
+        self.layer1 = self._make_layer(BasicBlock, 16, blocks_per_stage, skip=False)
+        self.layer2 = self._make_layer(BasicBlock, 32, blocks_per_stage, stride=2, skip=False)
+        self.layer3 = self._make_layer(BasicBlock, 64, blocks_per_stage, stride=2, skip=False)
         self.avgpool = nn.AvgPool2d(8, stride=1)
         self.fc = nn.Linear(64, num_classes)
         self.channel_utility = torch.tensor(self.channel_utility)
@@ -164,11 +166,10 @@ class DcpVgg(DCPBasicClass):
 class PrunedVgg(nn.Module):
     def __init__(self, net):
         super(PrunedVgg, self).__init__()
-        cfg = net.activated_channels.tolist()
+        cfg = [i for i in net.activated_channels]
         self.activated_channels = cfg
         for position in [2, 5, 9, 13, 17]:
             cfg.insert(position, 'M')
-        print(cfg)
         self.features = self._make_layers(cfg)
         self.classifier = nn.Linear(cfg[-2], 10)
         self._parameter_init(net, layers=13)
@@ -251,8 +252,8 @@ class PrunedBasicBlock(nn.Module):
 class PrunedResNet(nn.Module):
     def __init__(self, net):
         super(PrunedResNet, self).__init__()
-        self.blocks_per_stage = 9
-        self.activated_channels = net.activated_channels.tolist()
+        self.blocks_per_stage = blocks_per_stage
+        self.activated_channels = net.activated_channels
         self.inplanes = 16
         self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(16)
