@@ -39,7 +39,6 @@ def train(args=None):
     if args.pretrained:
         print("Loading pre-trained model...")
         net.load_state_dict(model_zoo.load_url(model_urls['resnet50']))
-
     if use_cuda:
         torch.cuda.set_device(args.cuda_device)
         net = net.cuda(args.cuda_device)
@@ -50,8 +49,9 @@ def train(args=None):
     # loss function
     criterion = nn.CrossEntropyLoss()
     # optimizer
-    optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=0.9, weight_decay=args.wd)
-    lr_scheduler = MultiStepLR(optimizer, milestones=[13, 22, 28], gamma=0.1)
+    # warm-up
+    optimizer = torch.optim.SGD(net.parameters(), lr=0.01, momentum=0.9, weight_decay=args.wd)
+    lr_scheduler = MultiStepLR(optimizer, milestones=[args.epoch // 3, args.epoch*2//3], gamma=0.1)
     # data-load 
     transform_train = transforms.Compose([
         transforms.RandomResizedCrop(224),
@@ -128,6 +128,9 @@ def train(args=None):
             dic['top-5'] = t5
         net.train(mode=True)
         # the beginning several epochs for warming up the channel-utility
+        if (epoch+1) == 1:
+            for param_group in optimizer.param_groups:
+                param_group['lr'] = lr 
         if (epoch+1) == 5:
             net.initialization_over = True
     # pruning
@@ -141,7 +144,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-pr', type=float, help='pruning rate', default=0.3)
     parser.add_argument('--decay', type=float, default=0.6, help='Initialized decay factor in the evaporation process')
-    parser.add_argument('--lr', type=float, help='initial learning rate', default=0.01)
+    parser.add_argument('--lr', type=float, help='initial learning rate', default=0.1)
     parser.add_argument('--epochs', type=int, help="training epochs", default=90)
     parser.add_argument('--bz', type=int, help='batch size', default=64)
     parser.add_argument('--wd', type=float, help='weight decay', default=1e-4)
