@@ -25,10 +25,19 @@ mkdir model
 ```
 Type the following code to run on CIFAR-10
 ```
-pyhton3 main.py -architecture [Vgg or ResNet] -decay [initial value of decay factor] -pr [global pruning rate of channels]
+pyhton3 main.py -architecture [Vgg or ResNet] -decay [initial value of decay factor] -pr [global pruning rate of channels] -data_dir [path to the dataset]
 ```
 In regard with pruning ResNet on ILSVRC-2012, type
 ```
-pyhton3 main2.py -pr [global pruning rate of channels]
+pyhton3 main2.py -pr [global pruning rate of channels] -data_dir [path to the dataset]
 ```
+## Result
+|Data set| Architecture|Top-1|Top-5|FLOPs pruned|
+|:-:|:-:|:-:|:-:|:-:|
+|CIFAR-10|VGG-16|93.50%|-|73.3%|
+|CIFAR-10|ResNet-32|92.60%|-|50.2%|
+|ImageNet|ResNet-50|74.25%|92.05%|41.1%|
+
+
+
 

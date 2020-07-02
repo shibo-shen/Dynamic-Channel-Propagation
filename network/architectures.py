@@ -94,7 +94,7 @@ class DcpResNet(DCPBasicClass):
         x = self.relu(x)
         for l, layer in enumerate([self.layer1, self.layer2, self.layer3]):
             for _, (_, m) in enumerate(layer._modules.items()):
-                # 第一层，保留残差
+                # 
                 residual = x
                 x = m.conv1(x)
                 x = m.bn1(x)
@@ -103,7 +103,7 @@ class DcpResNet(DCPBasicClass):
                     self.activation_stack.push(x)
                     self.layer_index_stack.push(count)
                 x = x * self.mask[count].expand_as(x)
-                # 中间层
+                # 
                 x = m.forward2(x, residual)
                 count += 1
         x = self.avgpool(x)
@@ -219,9 +219,6 @@ class PrunedVgg(nn.Module):
         x = self.features(x)
         x = x.view(x.size(0), -1)
         return self.classifier(x)
-
-    
-
 
 class PrunedBasicBlock(nn.Module):
     expansion = 1

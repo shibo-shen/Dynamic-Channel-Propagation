@@ -98,6 +98,7 @@ def train(args=None):
             if use_cuda:
                 b_x = b_x.cuda()
                 b_y = b_y.cuda()
+            # update masks
             net.update_mask(not net.initialization_over)
             outputs = net(b_x, i)
             optimizer.zero_grad()
@@ -150,7 +151,7 @@ if __name__ == "__main__":
     parser.add_argument('--start_epoch', type=int, default=0)
     parser.add_argument('-j', '--workers', default=16, type=int, metavar='N',
                         help='number of data loading workers (default: 16)')
-    parser.add_argument('-name', type=str, default="ResNet50-0.3-ImageNet")
+    parser.add_argument('--name', type=str, default="ResNet50-0.3-ImageNet")
     parser.add_argument('-date_dir', type=str, default='../data/ILSVRC-12')
     args = parser.parse_args()
     args.name = "ResNet50-{}-ImageNet".format(args.pr)
