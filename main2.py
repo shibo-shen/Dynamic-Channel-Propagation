@@ -19,6 +19,7 @@ import pickle
 import copy
 import torch.utils.model_zoo as model_zoo
 from network.critic import *
+from network.archi_imagenet import *
 
 
 model_urls = {
@@ -33,7 +34,7 @@ def train(args=None):
     assert args is not None
     use_cuda = torch.cuda.is_available() and args.cuda
     # network declaration
-    net = SResNet(is_stigmergy=False, ksai=args.ksai)
+    net = DcpResNet(pr=args.pr)
     name_net = args.name
     if args.pretrained:
         print("Loading pre-trained model...")
@@ -42,16 +43,16 @@ def train(args=None):
     if use_cuda:
         torch.cuda.set_device(args.cuda_device)
         net = net.cuda(args.cuda_device)
-    # 超参数设置
+    # hyper-parameters
     epochs = args.epochs
     lr = args.lr
     batch_size = args.bz
-    # 误差函数设置
+    # loss function
     criterion = nn.CrossEntropyLoss()
-    # 优化器设置
+    # optimizer
     optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=0.9, weight_decay=args.wd)
     lr_scheduler = MultiStepLR(optimizer, milestones=[13, 22, 28], gamma=0.1)
-    # 数据读入
+    # data-load 
     transform_train = transforms.Compose([
         transforms.RandomResizedCrop(224),
         transforms.RandomHorizontalFlip(),
@@ -69,13 +70,13 @@ def train(args=None):
     ])
     cudnn.benchmark = True
 
-    # 生成数据集
-    train_set = datasets.ImageFolder("./data/ILSVRC-12/train", transform_train)
+    # generate the data set
+    train_set = datasets.ImageFolder(args.data_dir+"/train", transform_train)
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=args.workers)
-    val_set = datasets.ImageFolder("./data/ILSVRC-12/validate", transform_test)
+    val_set = datasets.ImageFolder(args.data_dir+"/validate", transform_test)
     validate_loader = DataLoader(val_set, batch_size=16, shuffle=False, num_workers=args.workers)
 
-    # 开始训练
+    # training begins
     loss_save = []
     tacc_t1 = AverageMeter()
     tacc_t5 = AverageMeter()
@@ -83,16 +84,13 @@ def train(args=None):
     best_t1 = 0.
     best_t5 = 0.
     dic = {}
-    dic2 = {}
     net.stigmergy = False
     end = time.time()
     # t1, t5 = validate(validate_loader, net, use_cuda)
     net.train()
+    net.update_mask(exploration=True)
     for epoch in range(args.start_epoch, epochs):
-        running_loss = 0.0
         lr_scheduler.step()
-        if (epoch + 1) == 2:
-            net.stigmergy = True
         tacc_t1.reset()
         tacc_t5.reset()
         for i, (b_x, b_y) in enumerate(train_loader):
@@ -100,13 +98,13 @@ def train(args=None):
             if use_cuda:
                 b_x = b_x.cuda()
                 b_y = b_y.cuda()
+            net.update_mask(not net.initialization_over)
             outputs = net(b_x, i)
             optimizer.zero_grad()
             loss = criterion(outputs, b_y)
             loss.backward()
             optimizer.step()
-            # 计算loss
-            running_loss += loss.item()
+            # calculate the loss
             prec1, prec5 = accuracy_imagenet(outputs, b_y, topk=(1, 5))
             tacc_t1.update(prec1[0], size)
             tacc_t5.update(prec5[0], size)
@@ -123,31 +121,39 @@ def train(args=None):
         if t1 > best_t1 or t5 > best_t5:
             best_t1 = t1
             best_t5 = t5
-            dic['best_model'] = copy.deepcopy(net.state_dict())
-            dic['best_sv'] = copy.deepcopy(net.sv)
-            dic['best_dm'] = copy.deepcopy(net.distance_matrices)
+            dic['channel_utility'] = copy.deepcopy(net.channel_utility)
+            dic['architecture'] = copy.deepcopy(net.activated_channels)
+            dic['top-1'] = t1
+            dic['top-5'] = t5
         net.train(mode=True)
+        # the beginning several epochs for warming up the channel-utility
+        if (epoch+1) == 5:
+            net.initialization_over = True
+    # pruning
+    net = pruning(net)
+    dic['model'] = net.state_dict()
     with open('./model/record-{}.p'.format(name_net), 'wb') as f:
         pickle.dump(dic, f)
 
 
 if __name__ == "__main__":
-    net = "ResNet50-0.3-ImageNet"
     parser = argparse.ArgumentParser()
-    parser.add_argument('-pr', type=float, help='pruning rate', default=pr)
+    parser.add_argument('-pr', type=float, help='pruning rate', default=0.3)
     parser.add_argument('--decay', type=float, default=0.6, help='Initialized decay factor in the evaporation process')
     parser.add_argument('--lr', type=float, help='initial learning rate', default=0.01)
-    parser.add_argument('--epochs', type=int, help="training epochs", default=30)
+    parser.add_argument('--epochs', type=int, help="training epochs", default=90)
     parser.add_argument('--bz', type=int, help='batch size', default=64)
     parser.add_argument('--wd', type=float, help='weight decay', default=1e-4)
     parser.add_argument('--cuda', type=bool, help='GPU', default=True)
     parser.add_argument('-cuda_device', type=int, default=1)
     parser.add_argument('--pretrained', type=bool, default=True)
     parser.add_argument('--start_epoch', type=int, default=0)
-    parser.add_argument('-j', '--workers', default=30, type=int, metavar='N',
-                        help='number of data loading workers (default: 8)')
-    parser.add_argument('-name', type=str, default='{}'.format(net))
+    parser.add_argument('-j', '--workers', default=16, type=int, metavar='N',
+                        help='number of data loading workers (default: 16)')
+    parser.add_argument('-name', type=str, default="ResNet50-0.3-ImageNet")
+    parser.add_argument('-date_dir', type=str, default='../data/ILSVRC-12')
     args = parser.parse_args()
+    args.name = "ResNet50-{}-ImageNet".format(args.pr)
     train(args)
 
 

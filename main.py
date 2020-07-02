@@ -17,15 +17,14 @@ def train(args=None):
     use_cuda = torch.cuda.is_available() and args.cuda
     # network declaration
     lr_range = []
-
     if args.architecture == 'ResNet':
         args.epochs = 300
         lr_range = [150, 200, 250, 290]
-        net = SResNet(num_classes=10, pr=args.pr)
+        net = DcpResNet(num_classes=10, pr=args.pr)
     elif args.architecture == 'Vgg':
         args.epochs = 200
         lr_range = [100, 150, 190]
-        net = SVgg(pr=args.pr)
+        net = DcpVgg(pr=args.pr)
     else:
         exit(0)
     if args.pre_trained is True:
@@ -44,17 +43,17 @@ def train(args=None):
         with open('./pre-trained/{}'.format(args.pre_model), 'rb') as f:
             d = pickle.load(f)
             net.load_state_dict(d['best_model'])
-    # 超参数设置
+    # hyper-parameters
     epochs = args.epochs
     lr = args.lr
     batch_size = args.bz
-    # 误差函数设置
+    # loss function
     criterion = nn.CrossEntropyLoss()
-    # 优化器设置
+    # optimizer
     optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=0.9, weight_decay=args.wd, nesterov=False)
     lr_scheduler = MultiStepLR(optimizer, milestones=lr_range, gamma=0.1)
 
-    # 数据读入
+    # data load and preprocess
     transform_train = transforms.Compose([
         transforms.Pad(4),
         transforms.RandomCrop(32),
@@ -68,19 +67,19 @@ def train(args=None):
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     ])
 
-    # 生成数据集
-    train_set = dataset(root='./data', train=True, download=False, transform=transform_train)
+    # generate the dataset objects
+    train_set = dataset(root=args.data_dir, train=True, download=False, transform=transform_train)
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=args.workers)
-    val_set = dataset(root='./data', train=False, download=False, transform=transform_test)
+    val_set = dataset(root=args.data_dir, train=False, download=False, transform=transform_test)
     validate_loader = DataLoader(val_set, batch_size=64, shuffle=False, num_workers=args.workers)
 
-    # 开始训练
+    # training begins
     loss_save = []
     tacc_save = []
     vacc_save = []
     best_acc = 0.
     dic = {}
-    # 第一次更新掩码
+    # update mask
     net.update_mask(exploration=True)
     for epoch in range(epochs):
         running_loss = 0.0
@@ -91,15 +90,16 @@ def train(args=None):
             if use_cuda:
                 b_x = b_x.cuda()
                 b_y = b_y.cuda()
+            # update masks
             net.update_mask(not net.initialization_over)
-            # 网络更新部分
+            # update the network parameters
             outputs = net(b_x)
             optimizer.zero_grad()
             loss = criterion(outputs, b_y)
             loss.backward()
             optimizer.step()
 
-            # 计算loss
+            # calculate the loss
             running_loss += loss.item()
             count += size
             correct_count += accuracy(outputs, b_y).item()
@@ -132,12 +132,16 @@ def train(args=None):
     dic['validating_accuracy'] = vacc_save
     dic['channel_utility'] = net.channel_utility
     dic['architecture'] = net.activated_channels
+    # pruning
+    net = pruning(net, args.architecture)
+    dic['model'] = net.state_dict() 
     with open('./model/record-{}.p'.format(name_net), 'wb') as f:
         pickle.dump(dic, f)
+    
+
 
 
 if __name__ == "__main__":
-    prs = [0.1, 0.2, 0.3, 0.5, 0.6]
     pr = 0.42
     architecture = 'Vgg'
     parser = argparse.ArgumentParser()
@@ -155,6 +159,7 @@ if __name__ == "__main__":
                         help='number of data loading workers (default: 8)')
     parser.add_argument('--name', type=str, default='{}'.format(net))
     parser.add_argument('-architecture', type=str, default=architecture)
+    parser.add_argument('-date_dir', type=str, default='../data')
     args = parser.parse_args()
     net = "{0}-pr-{1}".format(args.architecture, args.pr)
     args.name = '{}'.format(net)
