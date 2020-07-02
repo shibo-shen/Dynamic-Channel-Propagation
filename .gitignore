@@ -2,3 +2,6 @@ test/
 data/
 model/
 test*
+network/__pycache__
+__pycache__
+*xml
