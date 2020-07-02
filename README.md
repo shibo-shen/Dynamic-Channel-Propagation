@@ -38,6 +38,8 @@ pyhton3 main2.py -pr [global pruning rate of channels] -data_dir [path to the da
 |CIFAR-10|ResNet-32|92.60%|-|50.2%|
 |ImageNet|ResNet-50|74.25%|92.05%|41.1%|
 
+Please refer to our paper for more details.
+
 
 
 
